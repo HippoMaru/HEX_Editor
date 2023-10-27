@@ -4,22 +4,22 @@ import hex.Utils;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static hex.HEXEditor.*;
+import static hex.gui.MainTable.*;
+
 public class MainFrame {
 
-    private final JFrame jFrame;
-    private final ArrayList<ArrayList<Byte>> data;
-    private final JTable table;
-    private final JTextField searchTF;
-
-    public MainFrame(int width, int height, String filePath, ArrayList<ArrayList<Byte>> data) {
-        this.data = data;
+    private static JTextField searchTF;
+    private static JButton searchButton;
+    public static void create() {
         jFrame = new JFrame();
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         Toolkit toolkit = Toolkit.getDefaultToolkit();
@@ -30,37 +30,46 @@ public class MainFrame {
 
             public void windowClosing(WindowEvent e){
                 try {
-                    Utils.updateFile(data, filePath);
+                    Utils.updateFile();
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
             }
         });
-
-        MainTable mainTable = new MainTable(data);
-        table = mainTable.getTable();
         searchTF = new JTextField(30);
-        JButton searchButton = createSearchButton();
+        createSearchButton();
+        createTable();
         JScrollPane pane = new JScrollPane(table, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        pane.setRowHeaderView(mainTable.getHeaderTable());
+        pane.setRowHeaderView(headerTable);
         JPanel searchPanel = new JPanel();
-        searchPanel.add(searchTF, BorderLayout.EAST);
+        JButton fileChooserButton = new JButton("Загрузить файл");
+
+        fileChooserButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileopen = new JFileChooser();
+                int ret = fileopen.showDialog(null, "Открыть файл");
+                if (ret == JFileChooser.APPROVE_OPTION) {
+                    file = fileopen.getSelectedFile();
+                    Utils.loadData();
+                    create();
+                }
+            }
+        });
+        searchPanel.add(fileChooserButton, BorderLayout.EAST);
+        searchPanel.add(searchTF, BorderLayout.CENTER);
         searchPanel.add(searchButton, BorderLayout.WEST);
         jFrame.add(searchPanel, BorderLayout.NORTH);
         jFrame.add(pane, BorderLayout.CENTER);
         JPanel controlPanel = new JPanel();
-        controlPanel.add(mainTable.getShiftModePanel(), BorderLayout.NORTH);
-        controlPanel.add(mainTable.getToolTipModePanel(), BorderLayout.SOUTH);
+        controlPanel.add(shiftModePanel, BorderLayout.NORTH);
+        controlPanel.add(toolTipModePanel, BorderLayout.SOUTH);
         jFrame.add(controlPanel, BorderLayout.SOUTH);
         jFrame.pack();
+        jFrame.setVisible(true);
     }
 
-    public JFrame getJFrame() {
-        return jFrame;
-    }
-
-    private JButton createSearchButton(){
-        JButton searchButton = new JButton("Search");
+    private static void createSearchButton(){
+        searchButton = new JButton("Search");
         searchButton.addActionListener(e -> {
             String searchInput = searchTF.getText();
             Pattern pattern = Pattern.compile(searchInput);
@@ -84,6 +93,5 @@ public class MainFrame {
                 }
             }
         });
-        return searchButton;
     }
 }

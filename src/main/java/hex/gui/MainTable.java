@@ -1,6 +1,5 @@
 package hex.gui;
 
-import hex.HEXEditor;
 import hex.Utils;
 
 import javax.swing.*;
@@ -15,37 +14,28 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.OptionalInt;
 
+import static hex.HEXEditor.data;
+
 public class MainTable {
 
     private enum ToolTipMode {SELECT_ONE, SELECT_TWO, SELECT_FOUR, SELECT_EIGHT}
-    private enum ShiftMode {SHIFT, NO_SHIFT}
-    private final JTable table;
-    private final JTable headerTable;
-    private final JPopupMenu popupMenu;
-    private final JPanel toolTipModePanel;
-    private final JPanel shiftModePanel;
-    private final ArrayList<ArrayList<Byte>> data;
-    private ToolTipMode curToolTipMode;
-    private ShiftMode curShiftMode;
-    private byte[] copyBuffer;
-    public MainTable(ArrayList<ArrayList<Byte>> data){
-        this.data = data;
-        copyBuffer = new byte[]{};
-        curToolTipMode = ToolTipMode.SELECT_ONE;
-        curShiftMode = ShiftMode.SHIFT;
 
-        table = createTable();
-        popupMenu = createPopupMenu();
-        toolTipModePanel = createTipModePanel();
-        shiftModePanel = createShiftModePanel();
-        headerTable = createHeaderTable();
-    }
+    private enum ShiftMode {SHIFT, NO_SHIFT}
+
+    public static JTable table;
+    public static JTable headerTable;
+    private static JPopupMenu popupMenu;
+    public static JPanel toolTipModePanel;
+    public static JPanel shiftModePanel;
+    private static ToolTipMode curToolTipMode;
+    private static ShiftMode curShiftMode;
+    private static byte[] copyBuffer;
 
     static class CustomTableModel extends AbstractTableModel {
 
         private final ArrayList<ArrayList<Byte>> data;
 
-        public CustomTableModel(ArrayList<ArrayList<Byte>> data){
+        public CustomTableModel(ArrayList<ArrayList<Byte>> data) {
             this.data = data;
         }
 
@@ -63,24 +53,31 @@ public class MainTable {
         }
 
         public String getValueAt(int row, int col) {
-            if (data.get(row).size() <= col) return "00";
+            if (data.get(row).size() <= col) return "";
             return String.format("%02X", data.get(row).get(col));
         }
 
-        public boolean isCellEditable(int row, int col)
-        { return col != 0; }
+        public boolean isCellEditable(int row, int col) {
+            return col != 0;
+        }
+
         public void setValueAt(Object value, int row, int col) {
-            while (data.get(row).size() <= col){
+            while (data.get(row).size() <= col) {
                 data.get(row).add((byte) 0);
             }
-            try {data.get(row).set(col, Byte.valueOf((String) value));}
-            catch (Throwable ignored){}
+            try {
+                data.get(row).set(col, Byte.valueOf((String) value));
+            } catch (Throwable ignored) {
+            }
             fireTableCellUpdated(row, col);
         }
     }
 
-    private JTable createTable(){
-        JTable table = new JTable(new CustomTableModel(data)){
+    public static void createTable() {
+        copyBuffer = new byte[]{};
+        curToolTipMode = ToolTipMode.SELECT_ONE;
+        curShiftMode = ShiftMode.SHIFT;
+        table = new JTable(new CustomTableModel(data)) {
             public String getToolTipText(MouseEvent e) {
                 String tip = null;
                 java.awt.Point p = e.getPoint();
@@ -128,15 +125,14 @@ public class MainTable {
         };
         table.setCellSelectionEnabled(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-
-        return table;
+        createPopupMenu();
+        createTipModePanel();
+        createShiftModePanel();
+        createHeaderTable();
     }
-    public JTable getTable() {
-        return table;
-    }
 
-    private JPopupMenu createPopupMenu(){
-        JPopupMenu popupMenu = new JPopupMenu();
+    private static void createPopupMenu() {
+        popupMenu = new JPopupMenu();
 
         JMenuItem deleteJMI = new JMenuItem("Delete");
         deleteJMI.addActionListener(e -> {
@@ -147,12 +143,12 @@ public class MainTable {
                     table.getSelectedColumn());
             int colEnd = table.convertColumnIndexToModel(
                     table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
-            switch (curShiftMode){
+            switch (curShiftMode) {
                 case NO_SHIFT -> {
-                    for (int row=rowStart; row<=rowEnd; row++) {
-                        for (int col=colStart; col<=colEnd; col++) {
+                    for (int row = rowStart; row <= rowEnd; row++) {
+                        for (int col = colStart; col <= colEnd; col++) {
                             try {
-                                Utils.deleteOne(row, col, data);
+                                Utils.deleteOne(row, col);
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }
@@ -160,12 +156,12 @@ public class MainTable {
                     }
                 }
                 case SHIFT -> {
-                    for (int row=rowStart; row<=rowEnd; row++) {
-                        for (int col=colStart; col<=colEnd; col++) {
+                    for (int row = rowStart; row <= rowEnd; row++) {
+                        for (int col = colStart; col <= colEnd; col++) {
                             try {
                                 data.get(row).remove(colStart);
+                            } catch (Throwable ignored) {
                             }
-                            catch (Throwable ignored){}
                         }
                     }
                 }
@@ -183,10 +179,10 @@ public class MainTable {
             int colEnd = table.convertColumnIndexToModel(
                     table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
             copyBuffer = new byte[(rowEnd - rowStart + 1) * (colEnd - colStart + 1)];
-            for (int row=rowStart; row<=rowEnd; row++) {
-                for (int col=colStart; col<=colEnd; col++) {
+            for (int row = rowStart; row <= rowEnd; row++) {
+                for (int col = colStart; col <= colEnd; col++) {
                     try {
-                        copyBuffer[(row-rowStart)*(colEnd-colStart + 1) + col-colStart] = data.get(row).get(col);
+                        copyBuffer[(row - rowStart) * (colEnd - colStart + 1) + col - colStart] = data.get(row).get(col);
                     } catch (Throwable ignored) {
                     }
                 }
@@ -199,18 +195,21 @@ public class MainTable {
             int row = table.getSelectedRow();
             if (row < 0 || copyBuffer.length == 0) return;
             int col = table.convertColumnIndexToModel(table.getSelectedColumn());
-            switch (curShiftMode){
+            switch (curShiftMode) {
                 case NO_SHIFT -> {
                     for (byte b : copyBuffer) {
-                        if(data.get(row).size() <= col){data.get(row).add(b);}
-                        else{data.get(row).set(col, b);}
+                        if (data.get(row).size() <= col) {
+                            data.get(row).add(b);
+                        } else {
+                            data.get(row).set(col, b);
+                        }
                         col++;
                     }
                 }
                 case SHIFT -> {
                     for (byte b : copyBuffer) {
                         try {
-                            Utils.insertOne(b, row, col++, data);
+                            Utils.insertOne(b, row, col++);
                         } catch (IOException ex) {
                             throw new RuntimeException(ex);
                         }
@@ -220,13 +219,9 @@ public class MainTable {
         });
         popupMenu.add(pasteJMI);
         table.setComponentPopupMenu(popupMenu);
-        return popupMenu;
     }
-
-    public JPopupMenu getPopupMenu(){ return popupMenu; }
-
-    private JPanel createTipModePanel(){
-        JPanel toolTipModePanel = new JPanel(new FlowLayout());
+    private static void createTipModePanel() {
+        toolTipModePanel = new JPanel(new FlowLayout());
         final JCheckBox toolTipCB1 = new JCheckBox("ToolTipMode: BYTE");
         final JCheckBox toolTipCB2 = new JCheckBox("ToolTipMode: INT");
         final JCheckBox toolTipCB4 = new JCheckBox("ToolTipMode: FLOAT");
@@ -274,16 +269,10 @@ public class MainTable {
         toolTipModePanel.add(toolTipCB2);
         toolTipModePanel.add(toolTipCB4);
         toolTipModePanel.add(toolTipCB8);
-
-        return toolTipModePanel;
     }
 
-    public JPanel getToolTipModePanel() {
-        return toolTipModePanel;
-    }
-
-    private JPanel createShiftModePanel(){
-        JPanel shiftModePanel = new JPanel(new FlowLayout());
+    private static void createShiftModePanel() {
+        shiftModePanel = new JPanel(new FlowLayout());
         final JCheckBox shiftCBShift = new JCheckBox("ShiftMode: SHIFT");
         final JCheckBox shiftCBNoShift = new JCheckBox("ShiftMode: NO SHIFT");
 
@@ -305,15 +294,11 @@ public class MainTable {
 
         shiftModePanel.add(shiftCBShift);
         shiftModePanel.add(shiftCBNoShift);
-
-        return shiftModePanel;
     }
 
-    public JPanel getShiftModePanel(){
-        return shiftModePanel;
-    }
 
-    private JTable createHeaderTable(){
+
+    private static void createHeaderTable() {
         final AbstractTableModel model = new AbstractTableModel() {
 
             @Serial
@@ -335,7 +320,7 @@ public class MainTable {
             }
         };
 
-        JTable headerTable = new JTable(model);
+        headerTable = new JTable(model);
         headerTable.setShowGrid(false);
         headerTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         headerTable.setPreferredScrollableViewportSize(new Dimension(80, 0));
@@ -358,10 +343,5 @@ public class MainTable {
         table.getRowSorter().addRowSorterListener(e -> model.fireTableDataChanged());
         table.getSelectionModel().addListSelectionListener(e -> model.fireTableRowsUpdated(0, model.getRowCount() - 1));
 
-        return headerTable;
-    }
-
-    public JTable getHeaderTable() {
-        return headerTable;
     }
 }
