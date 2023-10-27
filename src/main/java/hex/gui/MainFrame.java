@@ -20,6 +20,8 @@ public class MainFrame {
     private static JTextField searchTF;
     private static JButton searchButton;
     public static void create() {
+        try{jFrame.setVisible(false);}
+        catch (Throwable ignored){}
         jFrame = new JFrame();
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         Toolkit toolkit = Toolkit.getDefaultToolkit();

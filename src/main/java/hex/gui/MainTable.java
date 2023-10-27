@@ -24,7 +24,6 @@ public class MainTable {
 
     public static JTable table;
     public static JTable headerTable;
-    private static JPopupMenu popupMenu;
     public static JPanel toolTipModePanel;
     public static JPanel shiftModePanel;
     private static ToolTipMode curToolTipMode;
@@ -58,7 +57,7 @@ public class MainTable {
         }
 
         public boolean isCellEditable(int row, int col) {
-            return col != 0;
+            return true;
         }
 
         public void setValueAt(Object value, int row, int col) {
@@ -77,7 +76,9 @@ public class MainTable {
         copyBuffer = new byte[]{};
         curToolTipMode = ToolTipMode.SELECT_ONE;
         curShiftMode = ShiftMode.SHIFT;
-        table = new JTable(new CustomTableModel(data)) {
+        CustomTableModel model = new CustomTableModel(data);
+        model.fireTableDataChanged();
+        table = new JTable(model) {
             public String getToolTipText(MouseEvent e) {
                 String tip = null;
                 java.awt.Point p = e.getPoint();
@@ -132,7 +133,7 @@ public class MainTable {
     }
 
     private static void createPopupMenu() {
-        popupMenu = new JPopupMenu();
+        JPopupMenu popupMenu = new JPopupMenu();
 
         JMenuItem deleteJMI = new JMenuItem("Delete");
         deleteJMI.addActionListener(e -> {
@@ -166,6 +167,7 @@ public class MainTable {
                     }
                 }
             }
+            table.repaint();
         });
         popupMenu.add(deleteJMI);
 
@@ -187,6 +189,7 @@ public class MainTable {
                     }
                 }
             }
+            table.repaint();
         });
         popupMenu.add(copyJMI);
 
@@ -216,6 +219,7 @@ public class MainTable {
                     }
                 }
             }
+            table.repaint();
         });
         popupMenu.add(pasteJMI);
         table.setComponentPopupMenu(popupMenu);
