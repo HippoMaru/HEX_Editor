@@ -52,7 +52,11 @@ public class MainFrame {
                 int ret = fileopen.showDialog(null, "Открыть файл");
                 if (ret == JFileChooser.APPROVE_OPTION) {
                     file = fileopen.getSelectedFile();
-                    Utils.loadData();
+                    try {
+                        Utils.loadData();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
                     create();
                 }
             }

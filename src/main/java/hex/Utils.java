@@ -1,30 +1,26 @@
 package hex;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Objects;
 import static hex.HEXEditor.data;
 import static hex.HEXEditor.file;
 
 public class Utils {
 
-    public static void loadData(){
+    public static void loadData() throws IOException {
+        String strEndl = System.getProperty("line.separator");
+        byte[] bEndl = strEndl.getBytes();
         data = new ArrayList<>();
-        try (BufferedInputStream is =
-                     new BufferedInputStream(new FileInputStream(file))) {
-            byte i;
-            int j = 0;
-            data.add(new ArrayList<>());
-            //checks if EOF
-            while ((i = (byte) is.read()) != -1) {
-                data.get(j).add(i);
-                if (i == 10) { //checks if line break
-                    data.add(new ArrayList<>());
-                    j++;
-                }
+        byte[] array = Files.readAllBytes(file.toPath());
+        int j = 0;
+        data.add(new ArrayList<>());
+        for (byte i: array) {
+            data.get(j).add(i);
+            if (i == bEndl[bEndl.length - 1]) {
+                data.add(new ArrayList<>());
+                j++;
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
     public static void updateFile() throws IOException {
