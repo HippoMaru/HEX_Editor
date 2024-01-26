@@ -25,7 +25,6 @@ public class HEXEditor {
         jFrame.setBounds((dimension.width - 1000) / 2, (dimension.height - 300) / 2, 1000, 300);
         jFrame.setTitle("HEX Editor 2.0 by HippoMaru");
         jFrame.addWindowListener(new WindowAdapter() {
-
             public void windowClosing(WindowEvent e) {
                 updateFile();
             }
@@ -35,8 +34,6 @@ public class HEXEditor {
 
     private void updateFile() {
     }
-
-    ;
 
     public void run() {
         mainJFrame.setVisible(true);
