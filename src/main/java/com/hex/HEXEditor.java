@@ -17,31 +17,30 @@ public class HEXEditor {
     }
 
 
-
-
-    public JFrame createMainJFrame(){
+    public JFrame createMainJFrame() {
         JFrame jFrame = new JFrame();
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         Dimension dimension = toolkit.getScreenSize();
-        jFrame.setBounds((dimension.width - 1000)/2, (dimension.height - 300)/2, 1000, 300);
+        jFrame.setBounds((dimension.width - 1000) / 2, (dimension.height - 300) / 2, 1000, 300);
         jFrame.setTitle("HEX Editor 2.0 by HippoMaru");
-        jFrame.addWindowListener(new WindowAdapter(){
+        jFrame.addWindowListener(new WindowAdapter() {
 
-            public void windowClosing(WindowEvent e){
-                try {
-                    updateFile();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+            public void windowClosing(WindowEvent e) {
+                updateFile();
             }
         });
         return jFrame;
     }
 
-    private void updateFile(){};
+    private void updateFile() {
+    }
 
-    public void run(){}
+    ;
+
+    public void run() {
+        mainJFrame.setVisible(true);
+    }
 
     public JFrame getMainJFrame() {
         return mainJFrame;
