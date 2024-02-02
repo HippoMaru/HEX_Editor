@@ -15,7 +15,7 @@ public class HEXEditor {
 
     private MainTable mainTable;
 
-    private RandomAccessFile file;
+    private RandomAccessFile raf;
 
     public HEXEditor() {
         this.mainJFrame = createMainJFrame();
@@ -37,6 +37,7 @@ public class HEXEditor {
 
         JTextField searchTF = new JTextField(30);
         JButton searchButton = createSearchButton(searchTF);
+        mainTable = new MainTable(raf, nColumns);
         return jFrame;
     }
 

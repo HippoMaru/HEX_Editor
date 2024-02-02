@@ -7,16 +7,14 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.Serial;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.OptionalInt;
 
 public class MainTable {
 
     private enum ToolTipMode {SELECT_ONE, SELECT_TWO, SELECT_FOUR, SELECT_EIGHT}
-
-    private HEXEditor hexEditor;
 
     private enum ShiftMode {SHIFT, NO_SHIFT}
 
@@ -86,19 +84,24 @@ public class MainTable {
 
     static class CustomTableModel extends AbstractTableModel {
 
-        private final ArrayList<ArrayList<Byte>> data;
+        private final RandomAccessFile raf;
+        private final int n;
 
-        public CustomTableModel(ArrayList<ArrayList<Byte>> data) {
-            this.data = data;
+        public CustomTableModel(RandomAccessFile raf, int n) {
+            this.raf = raf;
+            this.n = n;
         }
 
         public int getColumnCount() {
-            OptionalInt result = data.stream().mapToInt(ArrayList::size).max();
-            return result.isPresent() ? result.getAsInt() : 0;
+            return n;
         }
 
         public int getRowCount() {
-            return data.size();
+            try {
+                return (int) (raf.length()/n);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public String getColumnName(int col) {
@@ -106,8 +109,16 @@ public class MainTable {
         }
 
         public String getValueAt(int row, int col) {
-            if (data.get(row).size() <= col) return "";
-            return String.format("%02X", data.get(row).get(col));
+            try {
+                raf.seek((long) row *n + col);
+            } catch (IOException e) {
+                return "";
+            }
+            try {
+                return String.format("%02X", raf.read());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public boolean isCellEditable(int row, int col) {
@@ -115,23 +126,24 @@ public class MainTable {
         }
 
         public void setValueAt(Object value, int row, int col) {
-            while (data.get(row).size() <= col) {
-                data.get(row).add((byte) 0);
+            try {
+                raf.seek((long) row*n + col);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
             try {
-                data.get(row).set(col, Byte.valueOf((String) value));
+                raf.write(Byte.parseByte((String) value));
             } catch (Throwable ignored) {
             }
             fireTableCellUpdated(row, col);
         }
     }
 
-    public void createTable(HEXEditor hexEditor, ArrayList<ArrayList<Byte>> data) {
-        this.hexEditor = hexEditor;
+    public  MainTable(RandomAccessFile raf, int n) {
         copyBuffer = new byte[]{};
         curToolTipMode = ToolTipMode.SELECT_ONE;
         curShiftMode = ShiftMode.SHIFT;
-        CustomTableModel model = new CustomTableModel(data);
+        CustomTableModel model = new CustomTableModel(raf, n);
         model.fireTableDataChanged();
         table = new JTable(model) {
             public String getToolTipText(MouseEvent e) {
@@ -140,38 +152,41 @@ public class MainTable {
                 int rowIndex = rowAtPoint(p);
                 int colIndex = columnAtPoint(p);
                 int realColumnIndex = convertColumnIndexToModel(colIndex);
+                try {
+                    raf.seek((long) rowIndex*n + realColumnIndex);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
 
                 if (rowIndex < 0) return "00";
                 byte[] bytes;
                 switch (curToolTipMode) {
                     case SELECT_ONE -> {
-                        if (data.get(rowIndex).size() <= colIndex) tip = "00";
-                        else tip = String.valueOf(data.get(rowIndex).get(realColumnIndex));
+                        try {
+                            tip = String.valueOf(raf.read());
+                        } catch (Throwable ignored) {}
                     }
                     case SELECT_TWO -> {
                         bytes = new byte[2];
-                        for (int i = 0; i < 2; i++) {
-                            if (realColumnIndex + i < data.get(rowIndex).size())
-                                bytes[i] = data.get(rowIndex).get(realColumnIndex + i);
-                        }
+                        try {
+                            raf.read(bytes);
+                        } catch (Throwable ignored) {}
                         int iVal = ((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF);
                         tip = String.valueOf(iVal);
                     }
                     case SELECT_FOUR -> {
                         bytes = new byte[4];
-                        for (int i = 0; i < 4; i++) {
-                            if (realColumnIndex + i < data.get(rowIndex).size())
-                                bytes[i] = data.get(rowIndex).get(realColumnIndex + i);
-                        }
+                        try {
+                            raf.read(bytes);
+                        } catch (Throwable ignored) {}
                         float fVal = ByteBuffer.wrap(bytes).getFloat();
                         tip = String.valueOf(fVal);
                     }
                     case SELECT_EIGHT -> {
                         bytes = new byte[8];
-                        for (int i = 0; i < 8; i++) {
-                            if (realColumnIndex + i < data.get(rowIndex).size())
-                                bytes[i] = data.get(rowIndex).get(realColumnIndex + i);
-                        }
+                        try {
+                            raf.read(bytes);
+                        } catch (Throwable ignored) {}
                         double dVal = ByteBuffer.wrap(bytes).getDouble();
                         tip = String.valueOf(dVal);
                     }
@@ -181,7 +196,7 @@ public class MainTable {
         };
         table.setCellSelectionEnabled(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-//        createPopupMenu();
+        createPopupMenu();
         createTipModePanel();
         createShiftModePanel();
         createHeaderTable();
@@ -216,7 +231,7 @@ public class MainTable {
                         for (int col = colStart; col <= colEnd; col++) {
                             try {
                                 data.get(row).remove(colStart);
-//                                hexEditor.setData(data);
+                                hexEditor.setData(data);
                             } catch (Throwable ignored) {
                             }
                         }
@@ -265,7 +280,7 @@ public class MainTable {
                         }
                         col++;
                     }
-//                    hexEditor.setData(data);
+                    hexEditor.setData(data);
                 }
                 case SHIFT -> {
                     for (byte b : copyBuffer) {
