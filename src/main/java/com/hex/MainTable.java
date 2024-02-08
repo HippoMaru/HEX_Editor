@@ -24,7 +24,8 @@ public class MainTable {
     private JPanel shiftModePanel;
     private ToolTipMode curToolTipMode;
     private ShiftMode curShiftMode;
-    private byte[] copyBuffer;
+    private int[] copyStart = null;
+    private int[] copyEnd = null;
 
     public JTable getTable() {
         return table;
@@ -74,18 +75,45 @@ public class MainTable {
         this.curShiftMode = curShiftMode;
     }
 
-    public byte[] getCopyBuffer() {
-        return copyBuffer;
+    public int[] getCopyStart() {
+        return copyStart;
     }
 
-    public void setCopyBuffer(byte[] copyBuffer) {
-        this.copyBuffer = copyBuffer;
+    public void setCopyStart(int[] copyStart) {
+        this.copyStart = copyStart;
+    }
+
+    public int[] getCopyEnd() {
+        return copyEnd;
+    }
+
+    public void setCopyEnd(int[] copyEnd) {
+        this.copyEnd = copyEnd;
+    }
+
+    private final RandomAccessFile raf;
+    private final int n;
+
+    public RandomAccessFile getRaf() {
+        return raf;
+    }
+
+    public int getN() {
+        return n;
     }
 
     static class CustomTableModel extends AbstractTableModel {
 
         private final RandomAccessFile raf;
         private final int n;
+
+        public RandomAccessFile getRaf() {
+            return raf;
+        }
+
+        public int getN() {
+            return n;
+        }
 
         public CustomTableModel(RandomAccessFile raf, int n) {
             this.raf = raf;
@@ -139,10 +167,11 @@ public class MainTable {
         }
     }
 
-    public  MainTable(RandomAccessFile raf, int n) {
-        copyBuffer = new byte[]{};
+    public  MainTable(RandomAccessFile raf, int n){
         curToolTipMode = ToolTipMode.SELECT_ONE;
         curShiftMode = ShiftMode.SHIFT;
+        this.raf = raf;
+        this.n = n;
         CustomTableModel model = new CustomTableModel(raf, n);
         model.fireTableDataChanged();
         table = new JTable(model) {
@@ -202,7 +231,7 @@ public class MainTable {
         createHeaderTable();
     }
 
-    private void createPopupMenu(ArrayList<ArrayList<Byte>> data) {
+    private void createPopupMenu() {
         JPopupMenu popupMenu = new JPopupMenu();
 
         JMenuItem deleteJMI = new JMenuItem("Delete");
@@ -218,8 +247,10 @@ public class MainTable {
                 case NO_SHIFT -> {
                     for (int row = rowStart; row <= rowEnd; row++) {
                         for (int col = colStart; col <= colEnd; col++) {
+                            table.setValueAt(0, row, col);
                             try {
-                                Utils.deleteOne(hexEditor, row, col);
+                                raf.seek((long) row*n + col);
+                                raf.write((byte) 0);
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }
@@ -227,15 +258,16 @@ public class MainTable {
                     }
                 }
                 case SHIFT -> {
-                    for (int row = rowStart; row <= rowEnd; row++) {
-                        for (int col = colStart; col <= colEnd; col++) {
-                            try {
-                                data.get(row).remove(colStart);
-                                hexEditor.setData(data);
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    }
+//                    for (int row = rowStart; row <= rowEnd; row++) {
+//                        for (int col = colStart; col <= colEnd; col++) {
+//                            try {
+//                                data.get(row).remove(colStart);
+//                                hexEditor.setData(data);
+//                            }
+//                            catch (Throwable ignored) {
+//                            }
+//                        }
+//                    }
                 }
             }
             table.repaint();
@@ -251,15 +283,8 @@ public class MainTable {
                     table.getSelectedColumn());
             int colEnd = table.convertColumnIndexToModel(
                     table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
-            copyBuffer = new byte[(rowEnd - rowStart + 1) * (colEnd - colStart + 1)];
-            for (int row = rowStart; row <= rowEnd; row++) {
-                for (int col = colStart; col <= colEnd; col++) {
-                    try {
-                        copyBuffer[(row - rowStart) * (colEnd - colStart + 1) + col - colStart] = data.get(row).get(col);
-                    } catch (Throwable ignored) {
-                    }
-                }
-            }
+            copyStart = new int[]{rowStart, colStart};
+            copyEnd = new int[]{rowEnd, colEnd};
             table.repaint();
         });
         popupMenu.add(copyJMI);
@@ -268,28 +293,42 @@ public class MainTable {
         pasteJMI.addActionListener(e -> {
 
             int row = table.getSelectedRow();
-            if (row < 0 || copyBuffer.length == 0) return;
+            if (row < 0 || copyStart == null) return;
             int col = table.convertColumnIndexToModel(table.getSelectedColumn());
+
             switch (curShiftMode) {
                 case NO_SHIFT -> {
-                    for (byte b : copyBuffer) {
-                        if (data.get(row).size() <= col) {
-                            data.get(row).add(b);
-                        } else {
-                            data.get(row).set(col, b);
-                        }
-                        col++;
-                    }
-                    hexEditor.setData(data);
-                }
-                case SHIFT -> {
-                    for (byte b : copyBuffer) {
+                    int width = copyEnd[1] - copyStart[1] + 1;
+                    for (int crow = copyStart[0]; crow <= copyEnd[0]; crow ++){
+                        byte[] copyBuffer = new byte[width];
+
                         try {
-                            Utils.insertOne(hexEditor, b, row, col++);
-                        } catch (IOException ex) {
+                            raf.seek((long) crow*n + copyStart[1]);
+                            raf.read(copyBuffer);
+                            raf.seek((long) row*n + col);
+                            raf.write(copyBuffer);
+                            for (int i = col; i < col + width; i ++){
+                                table.setValueAt(copyBuffer[i - col], row, i);
+                            }
+                            row += 1;
+                            if (row >= table.getRowCount()){
+                                break;
+                            }
+                        }
+
+                        catch (IOException ex) {
                             throw new RuntimeException(ex);
                         }
                     }
+                }
+                case SHIFT -> {
+//                    for (byte b : copyBuffer) {
+//                        try {
+//                            Utils.insertOne(hexEditor, b, row, col++);
+//                        } catch (IOException ex) {
+//                            throw new RuntimeException(ex);
+//                        }
+//                    }
                 }
             }
             table.repaint();

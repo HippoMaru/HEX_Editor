@@ -2,6 +2,8 @@ package com.hex;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.*;
@@ -15,14 +17,18 @@ public class HEXEditor {
 
     private MainTable mainTable;
 
-    private RandomAccessFile raf;
+    private RandomAccessFile raf = null;
 
     public HEXEditor() {
         this.mainJFrame = createMainJFrame();
+        mainJFrame.repaint();
     }
 
 
     public JFrame createMainJFrame() {
+        if(mainJFrame != null){
+            mainJFrame.setVisible(false);
+        }
         JFrame jFrame = new JFrame();
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         Toolkit toolkit = Toolkit.getDefaultToolkit();
@@ -34,13 +40,71 @@ public class HEXEditor {
                 updateFile();
             }
         });
+        jFrame.setVisible(true);
 
-        JTextField searchTF = new JTextField(30);
-        JButton searchButton = createSearchButton(searchTF);
+        JPanel headingPanel = createHeadingPanel();
+        jFrame.add(headingPanel, BorderLayout.NORTH);
+
+        if (raf == null){
+            return jFrame;
+        }
+
         mainTable = new MainTable(raf, nColumns);
+        JScrollPane tablePane = new JScrollPane(
+                mainTable.getTable(),
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
+        jFrame.add(tablePane, BorderLayout.CENTER);
+
+        JPanel controlPanel = createControlPanel();
+        jFrame.add(controlPanel, BorderLayout.SOUTH);
+
         return jFrame;
     }
 
+    private JPanel createControlPanel() {
+        JPanel controlPanel = new JPanel();
+        controlPanel.add(mainTable.getShiftModePanel(), BorderLayout.NORTH);
+        controlPanel.add(mainTable.getToolTipModePanel(), BorderLayout.CENTER);
+        return controlPanel;
+    }
+
+
+    private JPanel createHeadingPanel(){
+        JPanel headingPanel = new JPanel();
+
+        JButton fileChooserButton = createFileChooserButton();
+
+        JTextField searchTF = new JTextField(30);
+        JButton searchButton = createSearchButton(searchTF);
+
+        headingPanel.add(fileChooserButton, BorderLayout.EAST);
+        headingPanel.add(searchTF, BorderLayout.CENTER);
+        headingPanel.add(searchButton, BorderLayout.WEST);
+
+        return headingPanel;
+    }
+
+    private JButton createFileChooserButton(){
+        JButton fileChooserButton = new JButton("Загрузить файл");
+        fileChooserButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileopen = new JFileChooser();
+                int ret = fileopen.showDialog(null, "Открыть файл");
+                if (ret == JFileChooser.APPROVE_OPTION) {
+                    File name = fileopen.getSelectedFile();
+                    try {
+                        raf = new RandomAccessFile(name, "rws");
+                        mainJFrame = createMainJFrame();
+                        mainJFrame.repaint();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        });
+        return fileChooserButton;
+    }
     private JButton createSearchButton(JTextField searchTF){
         JButton searchButton = new JButton("Search");
         searchButton.addActionListener(e  -> {
@@ -51,11 +115,11 @@ public class HEXEditor {
             int startIndex;
             int endIndex;
             try {
-                for (long i = 0; i < Math.ceil((double) file.length() / nColumns); i++) {
+                for (long i = 0; i < Math.ceil((double) raf.length() / nColumns); i++) {
                     dataLine = new StringBuilder();
-                    file.seek(nColumns * i);
+                    raf.seek(nColumns * i);
                     byte[] line = new byte[nColumns];
-                    file.read(line);
+                    raf.read(line);
                     for (byte b : line) {
                         dataLine.append(String.format("%02X", b));
                     }
@@ -93,10 +157,10 @@ public class HEXEditor {
     }
 
     public RandomAccessFile getFile() {
-        return file;
+        return raf;
     }
 
     public void setFile(RandomAccessFile file) {
-        this.file = file;
+        this.raf = file;
     }
 }
