@@ -1,6 +1,5 @@
 package com.hex;
 
-import org.w3c.dom.ls.LSOutput;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -8,7 +7,6 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serial;
@@ -16,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 
 public class MainTable {
 
@@ -45,81 +42,21 @@ public class MainTable {
         return headerTable;
     }
 
-    public void setHeaderTable(JTable headerTable) {
-        this.headerTable = headerTable;
-    }
-
     public JPanel getToolTipModePanel() {
         return toolTipModePanel;
-    }
-
-    public void setToolTipModePanel(JPanel toolTipModePanel) {
-        this.toolTipModePanel = toolTipModePanel;
     }
 
     public JPanel getShiftModePanel() {
         return shiftModePanel;
     }
 
-    public void setShiftModePanel(JPanel shiftModePanel) {
-        this.shiftModePanel = shiftModePanel;
-    }
-
-    public ToolTipMode getCurToolTipMode() {
-        return curToolTipMode;
-    }
-
-    public void setCurToolTipMode(ToolTipMode curToolTipMode) {
-        this.curToolTipMode = curToolTipMode;
-    }
-
-    public ShiftMode getCurShiftMode() {
-        return curShiftMode;
-    }
-
-    public void setCurShiftMode(ShiftMode curShiftMode) {
-        this.curShiftMode = curShiftMode;
-    }
-
-    public int[] getCopyStart() {
-        return copyStart;
-    }
-
-    public void setCopyStart(int[] copyStart) {
-        this.copyStart = copyStart;
-    }
-
-    public int[] getCopyEnd() {
-        return copyEnd;
-    }
-
-    public void setCopyEnd(int[] copyEnd) {
-        this.copyEnd = copyEnd;
-    }
-
     private final RandomAccessFile raf;
     private final int n;
-
-    public RandomAccessFile getRaf() {
-        return raf;
-    }
-
-    public int getN() {
-        return n;
-    }
 
     static class CustomTableModel extends AbstractTableModel {
 
         private final RandomAccessFile raf;
         private final int n;
-
-        public RandomAccessFile getRaf() {
-            return raf;
-        }
-
-        public int getN() {
-            return n;
-        }
 
         public CustomTableModel(RandomAccessFile raf, int n) {
             this.raf = raf;
@@ -270,7 +207,7 @@ public class MainTable {
                     }
                 }
                 case SHIFT -> {
-                    Path tempPath = Path.of("temp.txt");
+                    Path tempPath = Path.of("7ebba773ded88fa94b2fdba343723f55.txt");
                     try {
                         Files.delete(tempPath);
                     }
@@ -278,12 +215,11 @@ public class MainTable {
                     catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
-//                    catch (Throwable ignored){}
                     RandomAccessFile tempRaf;
 
                     try {
                         Files.createFile(tempPath);
-                        tempRaf = new RandomAccessFile("temp.txt", "rws");
+                        tempRaf = new RandomAccessFile("7ebba773ded88fa94b2fdba343723f55.txt", "rws");
                         tempRaf.seek(0);
                     }
                     catch (IOException ex) {
@@ -393,13 +329,6 @@ public class MainTable {
                     }
                 }
                 case SHIFT -> {
-//                    for (byte b : copyBuffer) {
-//                        try {
-//                            Utils.insertOne(hexEditor, b, row, col++);
-//                        } catch (IOException ex) {
-//                            throw new RuntimeException(ex);
-//                        }
-//                    }
                 }
             }
             table.repaint();

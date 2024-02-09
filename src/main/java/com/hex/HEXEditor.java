@@ -3,15 +3,11 @@ package com.hex;
 import javax.swing.*;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.text.NumberFormat;
-import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,20 +74,17 @@ public class HEXEditor {
         columnsField.setValue(nColumns);
         columnsLabel.setLabelFor(columnsField);
 
-        PropertyChangeListener l = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                int prevNColumns = nColumns;
-                nColumns = evt.getNewValue() != null & evt.getNewValue().toString().matches("-?\\d+(\\.\\d+)?") ? Integer.parseInt(evt.getNewValue().toString()) : nColumns;
-                if (nColumns < 1)
-                    nColumns = prevNColumns;
-                columnsField.setValue(nColumns);
-                if (prevNColumns != nColumns) {
-                    try {
-                        mainJFrame = createMainJFrame();
-                        mainJFrame.repaint();
-                    } catch (Throwable ignored) {
-                    }
+        PropertyChangeListener l = evt -> {
+            int prevNColumns = nColumns;
+            nColumns = evt.getNewValue() != null & evt.getNewValue().toString().matches("-?\\d+(\\.\\d+)?") ? Integer.parseInt(evt.getNewValue().toString()) : nColumns;
+            if (nColumns < 1)
+                nColumns = prevNColumns;
+            columnsField.setValue(nColumns);
+            if (prevNColumns != nColumns) {
+                try {
+                    mainJFrame = createMainJFrame();
+                    mainJFrame.repaint();
+                } catch (Throwable ignored) {
                 }
             }
         };
@@ -131,19 +124,17 @@ public class HEXEditor {
 
     private JButton createFileChooserButton(){
         JButton fileChooserButton = new JButton("Загрузить файл");
-        fileChooserButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileopen = new JFileChooser();
-                int ret = fileopen.showDialog(null, "Открыть файл");
-                if (ret == JFileChooser.APPROVE_OPTION) {
-                    File name = fileopen.getSelectedFile();
-                    try {
-                        raf = new RandomAccessFile(name, "rws");
-                        mainJFrame = createMainJFrame();
-                        mainJFrame.repaint();
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
+        fileChooserButton.addActionListener(e -> {
+            JFileChooser fileopen = new JFileChooser();
+            int ret = fileopen.showDialog(null, "Открыть файл");
+            if (ret == JFileChooser.APPROVE_OPTION) {
+                File name = fileopen.getSelectedFile();
+                try {
+                    raf = new RandomAccessFile(name, "rws");
+                    mainJFrame = createMainJFrame();
+                    mainJFrame.repaint();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
             }
         });
@@ -192,19 +183,4 @@ public class HEXEditor {
         mainJFrame.setVisible(true);
     }
 
-    public JFrame getMainJFrame() {
-        return mainJFrame;
-    }
-
-    public void setMainJFrame(JFrame mainJFrame) {
-        this.mainJFrame = mainJFrame;
-    }
-
-    public RandomAccessFile getFile() {
-        return raf;
-    }
-
-    public void setFile(RandomAccessFile file) {
-        this.raf = file;
-    }
 }
