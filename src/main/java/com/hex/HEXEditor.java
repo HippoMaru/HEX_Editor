@@ -1,12 +1,16 @@
 package com.hex;
 
 import javax.swing.*;
+import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.*;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,10 +66,49 @@ public class HEXEditor {
         return jFrame;
     }
 
+    private JFormattedTextField createColumnsField(){
+        JLabel columnsLabel = new JLabel("columns:");
+        NumberFormat format = NumberFormat.getIntegerInstance();
+        format.setGroupingUsed(false);
+        NumberFormatter numberFormatter = new NumberFormatter(format);
+        numberFormatter.setValueClass(Long.class);
+        numberFormatter.setAllowsInvalid(false);
+        JFormattedTextField columnsField = new JFormattedTextField(numberFormatter);
+        columnsField.setValue(nColumns);
+        columnsLabel.setLabelFor(columnsField);
+
+        PropertyChangeListener l = new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                int prevNColumns = nColumns;
+                nColumns = evt.getNewValue() != null & evt.getNewValue().toString().matches("-?\\d+(\\.\\d+)?") ? Integer.parseInt(evt.getNewValue().toString()) : nColumns;
+                if (nColumns < 1)
+                    nColumns = prevNColumns;
+                columnsField.setValue(nColumns);
+                if (prevNColumns != nColumns) {
+                    try {
+                        mainJFrame = createMainJFrame();
+                        mainJFrame.repaint();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        };
+        columnsField.addPropertyChangeListener(l);
+
+        return columnsField;
+    }
+
     private JPanel createControlPanel() {
         JPanel controlPanel = new JPanel();
+
         controlPanel.add(mainTable.getShiftModePanel(), BorderLayout.NORTH);
         controlPanel.add(mainTable.getToolTipModePanel(), BorderLayout.CENTER);
+
+        JFormattedTextField columnsField = createColumnsField();
+        controlPanel.add(new JLabel("columns:"), BorderLayout.SOUTH);
+        controlPanel.add(columnsField, BorderLayout.SOUTH);
+
         return controlPanel;
     }
 
