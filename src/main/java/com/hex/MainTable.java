@@ -1,15 +1,21 @@
 package com.hex;
 
+import org.w3c.dom.ls.LSOutput;
+
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serial;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class MainTable {
@@ -126,7 +132,7 @@ public class MainTable {
 
         public int getRowCount() {
             try {
-                return (int) (raf.length()/n);
+                return (int) ((raf.length()/n) + (raf.length() % n > 0 ? 1 : 0));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -164,6 +170,7 @@ public class MainTable {
             } catch (Throwable ignored) {
             }
             fireTableCellUpdated(row, col);
+
         }
     }
 
@@ -172,9 +179,17 @@ public class MainTable {
         curShiftMode = ShiftMode.SHIFT;
         this.raf = raf;
         this.n = n;
+        table = createTable();
+        createPopupMenu();
+        createTipModePanel();
+        createShiftModePanel();
+        createHeaderTable();
+    }
+
+    private JTable createTable(){
         CustomTableModel model = new CustomTableModel(raf, n);
         model.fireTableDataChanged();
-        table = new JTable(model) {
+        JTable table = new JTable(model) {
             public String getToolTipText(MouseEvent e) {
                 String tip = null;
                 java.awt.Point p = e.getPoint();
@@ -225,10 +240,7 @@ public class MainTable {
         };
         table.setCellSelectionEnabled(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        createPopupMenu();
-        createTipModePanel();
-        createShiftModePanel();
-        createHeaderTable();
+        return table;
     }
 
     private void createPopupMenu() {
@@ -258,16 +270,75 @@ public class MainTable {
                     }
                 }
                 case SHIFT -> {
-//                    for (int row = rowStart; row <= rowEnd; row++) {
-//                        for (int col = colStart; col <= colEnd; col++) {
-//                            try {
-//                                data.get(row).remove(colStart);
-//                                hexEditor.setData(data);
-//                            }
-//                            catch (Throwable ignored) {
-//                            }
-//                        }
-//                    }
+                    Path tempPath = Path.of("temp.txt");
+                    try {
+                        Files.delete(tempPath);
+                    }
+                    catch (NoSuchFileException ignored){}
+                    catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+//                    catch (Throwable ignored){}
+                    RandomAccessFile tempRaf;
+
+                    try {
+                        Files.createFile(tempPath);
+                        tempRaf = new RandomAccessFile("temp.txt", "rws");
+                        tempRaf.seek(0);
+                    }
+                    catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    for (int row = rowStart; row <= rowEnd; row++) {
+                        for (int col = 0; col < colStart; col++) {
+                            try {
+                                raf.seek((long) row * n + col);
+                                int b = raf.read();
+                                System.out.println(b);
+                                tempRaf.write(b);
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        }
+                        for (int col = colEnd + 1; col < n; col++) {
+                            try {
+                                raf.seek((long) row * n + col);
+                                int b = raf.read();
+                                System.out.println(b);
+                                tempRaf.write(b);
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        }
+                    }
+                    try {
+                        int maxRow = (int) ((raf.length()/n) + (raf.length() % n > 0 ? 1 : 0));
+                        for (int row = rowEnd + 1; row < maxRow; row++) {
+                            try {
+                                raf.seek((long) row * n);
+                                byte[] byteRow = new byte[row == maxRow - 1 ? (int) (raf.length() % n) : n];
+                                raf.read(byteRow);
+                                for (byte b: byteRow){
+                                    System.out.println(b);
+                                    tempRaf.write(b);
+                                }
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        }
+                        raf.getChannel().truncate((long) rowStart *n + tempRaf.length());
+                        raf.seek((long) rowStart *n);
+                        tempRaf.seek(0);
+                        for (int i = 0; i < tempRaf.length(); i++){
+                            int b = tempRaf.read();
+                            table.setValueAt(b, rowStart + i/n, i % n);
+                            raf.write(b);
+                        }
+                        tempRaf.close();
+                        Files.delete(tempPath);
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
                 }
             }
             table.repaint();
