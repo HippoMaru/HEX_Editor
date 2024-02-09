@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class MainTable {
 
@@ -248,28 +249,28 @@ public class MainTable {
                         }
                     }
                     try {
-                        int maxRow = (int) ((raf.length()/n) + (raf.length() % n > 0 ? 1 : 0));
-                        for (int row = rowEnd + 1; row < maxRow; row++) {
-                            try {
-                                raf.seek((long) row * n);
-                                byte[] byteRow = new byte[row == maxRow - 1 ? (int) (raf.length() % n) : n];
-                                raf.read(byteRow);
-                                for (byte b: byteRow){
-                                    System.out.println(b);
-                                    tempRaf.write(b);
-                                }
-                            } catch (IOException ex) {
-                                throw new RuntimeException(ex);
-                            }
+                        long endLength = raf.length() - (long) rowStart *n + tempRaf.length();
+                        int maxSize = Integer.MAX_VALUE/64;
+                        long bucketsAmount = endLength / maxSize + (endLength % maxSize == 0 ? 0 : 1);
+                        for (int i = 1; i <= bucketsAmount; i++){
+                            byte[] bucket = new byte[i == bucketsAmount ? (int) (endLength % maxSize) : maxSize];
+                            System.out.println(Arrays.toString(bucket));
+                            raf.seek((long) rowStart*n + (i == bucketsAmount ? (long) (i - 1) * maxSize + bucket.length: (long) i * maxSize) + tempRaf.length());
+                            raf.read(bucket);
+                            raf.seek((long) rowStart*n + (long) (i - 1) * maxSize + tempRaf.length());
+                            raf.write(bucket);
                         }
-                        raf.getChannel().truncate((long) rowStart *n + tempRaf.length());
+                        raf.getChannel().truncate(raf.length() - (long) (rowEnd - rowStart + 1) * (colEnd - colStart + 1));
                         raf.seek((long) rowStart *n);
                         tempRaf.seek(0);
-                        for (int i = 0; i < tempRaf.length(); i++){
-                            int b = tempRaf.read();
-                            table.setValueAt(b, rowStart + i/n, i % n);
-                            raf.write(b);
-                        }
+                        byte[] bucket = new byte[(int) tempRaf.length()];
+                        tempRaf.read(bucket);
+                        raf.write(bucket);
+//                        for (int i = 0; i < tempRaf.length(); i++){
+//                            int b = tempRaf.read();
+//                            table.setValueAt(b, rowStart + i/n, i % n);
+//                            raf.write(b);
+//                        }
                         tempRaf.close();
                         Files.delete(tempPath);
                     } catch (IOException ex) {
