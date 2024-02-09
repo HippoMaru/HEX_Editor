@@ -58,6 +58,7 @@ public class HEXEditor {
                 mainTable.getTable(),
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
+        tablePane.setRowHeaderView(mainTable.getHeaderTable());
         jFrame.add(tablePane, BorderLayout.CENTER);
 
         JPanel controlPanel = createControlPanel();
