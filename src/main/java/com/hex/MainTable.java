@@ -14,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Arrays;
 
 public class MainTable {
 
@@ -249,15 +248,14 @@ public class MainTable {
                         }
                     }
                     try {
-                        long endLength = raf.length() - (long) rowStart *n + tempRaf.length();
+                        long endLength = raf.length() - (long) (rowEnd + 1)*n ;
                         int maxSize = Integer.MAX_VALUE/64;
                         long bucketsAmount = endLength / maxSize + (endLength % maxSize == 0 ? 0 : 1);
-                        for (int i = 1; i <= bucketsAmount; i++){
-                            byte[] bucket = new byte[i == bucketsAmount ? (int) (endLength % maxSize) : maxSize];
-                            System.out.println(Arrays.toString(bucket));
-                            raf.seek((long) rowStart*n + (i == bucketsAmount ? (long) (i - 1) * maxSize + bucket.length: (long) i * maxSize) + tempRaf.length());
+                        for (int i = 0; i < bucketsAmount; i++){
+                            byte[] bucket = new byte[i == bucketsAmount - 1 ? (int) (endLength % maxSize) : maxSize];
+                            raf.seek((long) (rowEnd + 1)*n + (long) i * maxSize);
                             raf.read(bucket);
-                            raf.seek((long) rowStart*n + (long) (i - 1) * maxSize + tempRaf.length());
+                            raf.seek((long) rowStart*n + (long) (i) * maxSize + tempRaf.length());
                             raf.write(bucket);
                         }
                         raf.getChannel().truncate(raf.length() - (long) (rowEnd - rowStart + 1) * (colEnd - colStart + 1));
@@ -266,11 +264,6 @@ public class MainTable {
                         byte[] bucket = new byte[(int) tempRaf.length()];
                         tempRaf.read(bucket);
                         raf.write(bucket);
-//                        for (int i = 0; i < tempRaf.length(); i++){
-//                            int b = tempRaf.read();
-//                            table.setValueAt(b, rowStart + i/n, i % n);
-//                            raf.write(b);
-//                        }
                         tempRaf.close();
                         Files.delete(tempPath);
                     } catch (IOException ex) {
