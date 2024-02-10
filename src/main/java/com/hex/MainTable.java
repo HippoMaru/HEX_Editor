@@ -93,7 +93,11 @@ public class MainTable {
         }
 
         public boolean isCellEditable(int row, int col) {
-            return true;
+            try {
+                return (long) row *n + col < raf.length();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public void setValueAt(Object value, int row, int col) {
@@ -239,7 +243,17 @@ public class MainTable {
                         throw new RuntimeException(ex);
                     }
                     for (int row = rowStart; row <= rowEnd; row++) {
-                        for (int col = 0; col < colStart; col++) {
+                        int tempColStart = colStart;
+                        int tempN = n;
+                        if(row == table.getRowCount() - 1){
+                            try {
+                                tempColStart = (int) Math.min(raf.length()%n, colStart);
+                                tempN = raf.length()%n == 0 ? n : (int) (raf.length() % n);
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        }
+                        for (int col = 0; col < tempColStart; col++) {
                             try {
                                 raf.seek((long) row * n + col);
                                 int b = raf.read();
@@ -249,7 +263,7 @@ public class MainTable {
                                 throw new RuntimeException(ex);
                             }
                         }
-                        for (int col = colEnd + 1; col < n; col++) {
+                        for (int col = colEnd + 1; col < tempN; col++) {
                             try {
                                 raf.seek((long) row * n + col);
                                 int b = raf.read();
@@ -261,7 +275,8 @@ public class MainTable {
                         }
                     }
                     try {
-                        long endLength = raf.length() - (long) (rowEnd + 1)*n ;
+                        long endLength = Math.max(raf.length() - (long) (rowEnd + 1)*n, 0);
+
                         int maxSize = Integer.MAX_VALUE/64;
                         long bucketsAmount = endLength / maxSize + (endLength % maxSize == 0 ? 0 : 1);
                         for (int i = 0; i < bucketsAmount; i++){
@@ -284,6 +299,7 @@ public class MainTable {
                     }
                 }
             }
+            table.setModel(new CustomTableModel(raf, n));
             table.repaint();
         });
         return deleteJMI;
@@ -301,6 +317,21 @@ public class MainTable {
                 case NO_SHIFT -> {
                     int width = copyEnd[1] - copyStart[1] + 1;
                     for (int crow = copyStart[0]; crow <= copyEnd[0]; crow ++){
+                        if (crow == table.getRowCount() - 1){
+                            try {
+                                if (copyStart[1] < raf.length() % n){
+                                    byte[] copyBuffer = new byte[(int) (raf.length() % n - copyStart[1])];
+                                    raf.seek((long) crow*n + copyStart[1]);
+                                    raf.read(copyBuffer);
+                                    raf.seek((long) row*n + col);
+                                    raf.write(copyBuffer);
+                                }
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                            break;
+                        }
+
                         byte[] copyBuffer = new byte[width];
 
                         try {
@@ -344,6 +375,19 @@ public class MainTable {
                     }
                     int width = copyEnd[1] - copyStart[1] + 1;
                     for (int crow = copyStart[0]; crow <= copyEnd[0]; crow ++){
+                        if (crow == table.getRowCount() - 1){
+                            try {
+                                if (copyStart[1] < raf.length() % n){
+                                    byte[] copyBuffer = new byte[(int) (raf.length() % n - copyStart[1])];
+                                    raf.seek((long) crow*n + copyStart[1]);
+                                    raf.read(copyBuffer);
+                                    tempRaf.write(copyBuffer);
+                                }
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                            break;
+                        }
                         byte[] copyBuffer = new byte[width];
 
                         try {
@@ -355,7 +399,7 @@ public class MainTable {
                         }
                     }
                     try {
-                        long endLength = raf.length() - ((long) row *n + col);
+                        long endLength = Math.max(raf.length() - ((long) row *n + col), 0);
                         raf.getChannel().truncate(raf.length() + tempRaf.length());
                         int maxSize = Integer.MAX_VALUE/64;
                         long bucketsAmount = endLength / maxSize + (endLength % maxSize == 0 ? 0 : 1);
@@ -378,6 +422,7 @@ public class MainTable {
                     }
                 }
             }
+            table.setModel(new CustomTableModel(raf, n));
             table.repaint();
         });
         return pasteJMI;
@@ -395,7 +440,6 @@ public class MainTable {
                     table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
             copyStart = new int[]{rowStart, colStart};
             copyEnd = new int[]{rowEnd, colEnd};
-            table.repaint();
         });
         return copyJMI;
     }
