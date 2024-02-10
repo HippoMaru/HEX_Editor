@@ -183,6 +183,19 @@ public class MainTable {
     private void createPopupMenu() {
         JPopupMenu popupMenu = new JPopupMenu();
 
+        JMenuItem deleteJMI = createDeleteJMI();
+        popupMenu.add(deleteJMI);
+
+        JMenuItem copyJMI = createCopyJMI();
+        popupMenu.add(copyJMI);
+
+        JMenuItem pasteJMI = createPasteJMI();
+        popupMenu.add(pasteJMI);
+
+        table.setComponentPopupMenu(popupMenu);
+    }
+
+    private JMenuItem createDeleteJMI(){
         JMenuItem deleteJMI = new JMenuItem("Delete");
         deleteJMI.addActionListener(e -> {
             int rowStart = table.getSelectedRow();
@@ -273,23 +286,10 @@ public class MainTable {
             }
             table.repaint();
         });
-        popupMenu.add(deleteJMI);
+        return deleteJMI;
+    }
 
-        JMenuItem copyJMI = new JMenuItem("Copy");
-        copyJMI.addActionListener(e -> {
-            int rowStart = table.getSelectedRow();
-            if (rowStart < 0) return;
-            int rowEnd = table.getSelectionModel().getMaxSelectionIndex();
-            int colStart = table.convertColumnIndexToModel(
-                    table.getSelectedColumn());
-            int colEnd = table.convertColumnIndexToModel(
-                    table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
-            copyStart = new int[]{rowStart, colStart};
-            copyEnd = new int[]{rowEnd, colEnd};
-            table.repaint();
-        });
-        popupMenu.add(copyJMI);
-
+    private JMenuItem createPasteJMI(){
         JMenuItem pasteJMI = new JMenuItem("Paste");
         pasteJMI.addActionListener(e -> {
 
@@ -320,15 +320,84 @@ public class MainTable {
                         catch (IOException ex) {
                             throw new RuntimeException(ex);
                         }
+
                     }
                 }
                 case SHIFT -> {
+                    Path tempPath = Path.of("7ebba773ded88fa94b2fdba343723f55.txt");
+                    try {
+                        Files.delete(tempPath);
+                    }
+                    catch (NoSuchFileException ignored){}
+                    catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    RandomAccessFile tempRaf;
+
+                    try {
+                        Files.createFile(tempPath);
+                        tempRaf = new RandomAccessFile("7ebba773ded88fa94b2fdba343723f55.txt", "rws");
+                        tempRaf.seek(0);
+                    }
+                    catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    int width = copyEnd[1] - copyStart[1] + 1;
+                    for (int crow = copyStart[0]; crow <= copyEnd[0]; crow ++){
+                        byte[] copyBuffer = new byte[width];
+
+                        try {
+                            raf.seek((long) crow*n + copyStart[1]);
+                            raf.read(copyBuffer);
+                            tempRaf.write(copyBuffer);
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                    try {
+                        long endLength = raf.length() - ((long) row *n + col);
+                        raf.getChannel().truncate(raf.length() + tempRaf.length());
+                        int maxSize = Integer.MAX_VALUE/64;
+                        long bucketsAmount = endLength / maxSize + (endLength % maxSize == 0 ? 0 : 1);
+                        for (int i = 0; i < bucketsAmount; i++){
+                            byte[] bucket = new byte[i == bucketsAmount - 1 ? (int) (endLength % maxSize) : maxSize];
+                            raf.seek( (long) row *n + col + (long) i * maxSize);
+                            raf.read(bucket);
+                            raf.seek( (long) row *n + col + (long) i * maxSize + tempRaf.length());
+                            raf.write(bucket);
+                        }
+                        raf.seek((long) row *n + col);
+                        tempRaf.seek(0);
+                        byte[] bucket = new byte[(int) tempRaf.length()];
+                        tempRaf.read(bucket);
+                        raf.write(bucket);
+                        tempRaf.close();
+                        Files.delete(tempPath);
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
                 }
             }
             table.repaint();
         });
-        popupMenu.add(pasteJMI);
-        table.setComponentPopupMenu(popupMenu);
+        return pasteJMI;
+    }
+
+    private JMenuItem createCopyJMI(){
+        JMenuItem copyJMI = new JMenuItem("Copy");
+        copyJMI.addActionListener(e -> {
+            int rowStart = table.getSelectedRow();
+            if (rowStart < 0) return;
+            int rowEnd = table.getSelectionModel().getMaxSelectionIndex();
+            int colStart = table.convertColumnIndexToModel(
+                    table.getSelectedColumn());
+            int colEnd = table.convertColumnIndexToModel(
+                    table.getColumnModel().getSelectionModel().getMaxSelectionIndex());
+            copyStart = new int[]{rowStart, colStart};
+            copyEnd = new int[]{rowEnd, colEnd};
+            table.repaint();
+        });
+        return copyJMI;
     }
     private  void createTipModePanel() {
         toolTipModePanel = new JPanel(new FlowLayout());
