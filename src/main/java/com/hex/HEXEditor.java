@@ -141,7 +141,7 @@ public class HEXEditor {
         return fileChooserButton;
     }
     private JButton createSearchButton(JTextField searchTF){
-        JButton searchButton = new JButton("Search");
+        JButton searchButton = new JButton("Поиск");
         searchButton.addActionListener(e  -> {
             String searchInput = searchTF.getText();
             Pattern pattern = Pattern.compile(searchInput);
