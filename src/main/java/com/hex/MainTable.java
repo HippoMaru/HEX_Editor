@@ -107,7 +107,7 @@ public class MainTable {
                 throw new RuntimeException(e);
             }
             try {
-                raf.write(Byte.parseByte((String) value));
+                raf.write(Byte.parseByte((String) value, 16) & 0xff);
             } catch (Throwable ignored) {
             }
             fireTableCellUpdated(row, col);
