@@ -143,6 +143,9 @@ public class HEXEditor {
     private JButton createSearchButton(JTextField searchTF){
         JButton searchButton = new JButton("Поиск");
         searchButton.addActionListener(e  -> {
+            if (raf == null){
+                return;
+            }
             String searchInput = searchTF.getText();
             Pattern pattern = Pattern.compile(searchInput);
             Matcher matcher;
