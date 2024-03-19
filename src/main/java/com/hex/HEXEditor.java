@@ -4,7 +4,6 @@ import javax.swing.*;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.text.NumberFormat;
@@ -36,9 +35,6 @@ public class HEXEditor {
         jFrame.setBounds((dimension.width - 1000) / 2, (dimension.height - 300) / 2, 1000, 300);
         jFrame.setTitle("HEX Editor 2.0 by HippoMaru");
         jFrame.addWindowListener(new WindowAdapter() {
-            public void windowClosing(WindowEvent e) {
-                updateFile();
-            }
         });
         jFrame.setVisible(true);
 
@@ -179,11 +175,20 @@ public class HEXEditor {
         return searchButton;
     }
 
-    private void updateFile() {
-    }
-
     public void run() {
         mainJFrame.setVisible(true);
+    }
+
+    public JFrame getMainJFrame() {
+        return mainJFrame;
+    }
+
+    public MainTable getMainTable() {
+        return mainTable;
+    }
+
+    public RandomAccessFile getRaf() {
+        return raf;
     }
 
 }
