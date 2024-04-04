@@ -13,6 +13,9 @@ import java.util.regex.Pattern;
 public class HEXEditor {
     private JFrame mainJFrame;
     private int nColumns = 10;
+    String lastSearchText = "";
+    int lastSearchResStart;
+    int lastSearchResRow;
 
     private MainTable mainTable;
 
@@ -75,7 +78,14 @@ public class HEXEditor {
             nColumns = evt.getNewValue() != null & evt.getNewValue().toString().matches("-?\\d+(\\.\\d+)?") ? Integer.parseInt(evt.getNewValue().toString()) : nColumns;
             if (nColumns < 1)
                 nColumns = prevNColumns;
-            columnsField.setValue(nColumns);
+            try {
+                if ((raf.length()/nColumns) + (raf.length() % nColumns > 0 ? 1 : 0) > Integer.MAX_VALUE){
+                    nColumns = (int) (raf.length() / Integer.MAX_VALUE);
+                }
+                columnsField.setValue(nColumns);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             if (prevNColumns != nColumns) {
                 try {
                     mainJFrame = createMainJFrame();
@@ -121,12 +131,15 @@ public class HEXEditor {
     private JButton createFileChooserButton(){
         JButton fileChooserButton = new JButton("Загрузить файл");
         fileChooserButton.addActionListener(e -> {
-            JFileChooser fileopen = new JFileChooser();
-            int ret = fileopen.showDialog(null, "Открыть файл");
+            JFileChooser fileOpen = new JFileChooser();
+            int ret = fileOpen.showDialog(null, "Открыть файл");
             if (ret == JFileChooser.APPROVE_OPTION) {
-                File name = fileopen.getSelectedFile();
+                File name = fileOpen.getSelectedFile();
                 try {
                     raf = new RandomAccessFile(name, "rws");
+                    if ((raf.length()/nColumns) + (raf.length() % nColumns > 0 ? 1 : 0) > Integer.MAX_VALUE){
+                        nColumns = (int) (raf.length() / Integer.MAX_VALUE);
+                    }
                     mainJFrame = createMainJFrame();
                     mainJFrame.repaint();
                 } catch (IOException ex) {
@@ -148,8 +161,16 @@ public class HEXEditor {
             StringBuilder dataLine;
             int startIndex;
             int endIndex;
+            boolean continuedSearch = lastSearchText.equals(searchInput);
+            lastSearchText = searchInput;
             try {
-                for (long i = 0; i < Math.ceil((double) raf.length() / nColumns); i++) {
+                JTable table = mainTable.getTable();
+
+                for (
+                        long i = continuedSearch ? lastSearchResRow : 0;
+                        i < Math.ceil((double) raf.length() / nColumns);
+                        i++
+                ) {
                     dataLine = new StringBuilder();
                     raf.seek(nColumns * i);
                     byte[] line = new byte[nColumns];
@@ -161,8 +182,12 @@ public class HEXEditor {
                     if (matcher.find()) {
                         startIndex = matcher.start();
                         endIndex = matcher.end();
-                        JTable table = mainTable.getTable();
-                        table.setRowSelectionInterval((int) i, (int) i);
+                        if (continuedSearch
+                                && startIndex == lastSearchResStart
+                                && i == lastSearchResRow) continue;
+                        lastSearchResStart = startIndex;
+                        lastSearchResRow = (int) i;
+                        table.setRowSelectionInterval((int) i, (int) i );
                         table.setColumnSelectionInterval(startIndex / 2, (endIndex - 1) / 2);
                         table.scrollRectToVisible(table.getCellRect((int) i, startIndex / 2, true));
                         mainTable.setTable(table);
