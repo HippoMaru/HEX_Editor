@@ -80,7 +80,7 @@ public class HEXEditor {
                 nColumns = prevNColumns;
             try {
                 if ((raf.length()/nColumns) + (raf.length() % nColumns > 0 ? 1 : 0) > Integer.MAX_VALUE){
-                    nColumns = (int) (raf.length() / Integer.MAX_VALUE);
+                    nColumns = (int) (raf.length() / Integer.MAX_VALUE) + 1;
                 }
                 columnsField.setValue(nColumns);
             } catch (IOException e) {
