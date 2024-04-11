@@ -4,10 +4,15 @@ import junit.framework.TestCase;
 
 public class HEXEditorTest extends TestCase {
 
-    public void testCreateHexEditor() {
+    /**
+     * Tests if HEXEditor fields init properly
+     */
+    public void testFieldsInitOnCreateHexEditor() {
         HEXEditor hexEditor = new HEXEditor();
         assertNotNull(hexEditor.getMainJFrame());
         assertNull(hexEditor.getRaf());
         assertNull(hexEditor.getMainTable());
     }
+
+
 }
